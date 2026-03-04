@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700;800&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
         :root{
@@ -229,6 +230,27 @@
             .grid{grid-template-columns:1fr}.grid.c3,.grid.c4{grid-template-columns:1fr 1fr}
             .dot .dl{display:none}.dline{width:24px}.topbar{padding:12px 16px}
         }
+
+        /* ====== OCR ENGINE UI ====== */
+        #ocr-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:9999}
+        #ocr-overlay.on{display:flex}
+        .ocr-box{background:#fff;padding:44px 52px;border-radius:20px;text-align:center;box-shadow:var(--shadow-xl);min-width:440px;max-width:560px}
+        .ocr-box h3{font-size:1.3rem;color:var(--g800);margin-bottom:6px}
+        .ocr-box .ocr-sub{font-size:.85rem;color:var(--g500);margin-bottom:18px}
+        .ocr-pct{font-size:2.2rem;font-weight:800;color:var(--red);margin:8px 0 4px;font-family:'Playfair Display',serif}
+        .ocr-msg{font-size:.88rem;color:var(--g600);margin-bottom:16px;min-height:1.4em}
+        .ocr-steps{text-align:left;margin:18px 0 0}
+        .ocr-step{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;font-size:.82rem;color:var(--g400);transition:var(--ease)}
+        .ocr-step.active{color:var(--g800);font-weight:600;background:var(--g50)}
+        .ocr-step.done{color:var(--green);font-weight:500}
+        .ocr-step .sico{width:20px;text-align:center;font-size:.95rem;flex-shrink:0}
+        .extract-zone{background:linear-gradient(135deg,#f0fdf4,#ecfdf5);border:2px solid #86efac;border-radius:14px;padding:24px;margin-top:24px;text-align:center}
+        .extract-zone h4{font-size:.95rem;color:#166534;margin-bottom:6px}
+        .extract-zone p{font-size:.8rem;color:#15803d;margin-top:8px}
+        .raw-toggle{font-size:.76rem;color:var(--g400);cursor:pointer;margin-top:14px;user-select:none;display:inline-flex;align-items:center;gap:4px}
+        .raw-toggle:hover{color:var(--g600)}
+        .raw-box{background:var(--g50);border:1px solid var(--g200);border-radius:8px;padding:12px;margin-top:8px;max-height:180px;overflow-y:auto;text-align:left;font-family:'Courier New',monospace;font-size:.72rem;color:var(--g600);white-space:pre-wrap;display:none;line-height:1.5}
+        .raw-box.on{display:block}
     </style>
 </head>
 <body>
@@ -237,6 +259,20 @@
 
 <div id="pdf-overlay"><div class="pdf-box"><h3>Generating PDF...</h3><div class="pbar-out"><div class="pbar-in" id="pdf-bar"></div></div><p class="ptxt" id="pdf-txt">Preparing pages...</p></div></div>
 
+<div id="ocr-overlay"><div class="ocr-box">
+    <h3>🔍 Extracting Data...</h3>
+    <p class="ocr-sub">Tesseract.js OCR engine running in your browser</p>
+    <div class="ocr-pct" id="ocr-pct">0%</div>
+    <div class="pbar-out"><div class="pbar-in" id="ocr-bar" style="width:0%"></div></div>
+    <p class="ocr-msg" id="ocr-msg">Initializing...</p>
+    <div class="ocr-steps" id="ocr-steps">
+        <div class="ocr-step active" id="os-1"><span class="sico">⏳</span>Loading OCR engine</div>
+        <div class="ocr-step" id="os-2"><span class="sico">⏳</span>Preprocessing images</div>
+        <div class="ocr-step" id="os-3"><span class="sico">⏳</span>Reading text from screenshots</div>
+        <div class="ocr-step" id="os-4"><span class="sico">⏳</span>Parsing trainee data</div>
+    </div>
+</div></div>
+
 <div id="lightbox" onclick="this.classList.remove('on')"><img id="lb-img" src="" alt="Preview"></div>
 
 <!-- ====== APP SHELL ====== -->
@@ -244,7 +280,7 @@
     <header class="topbar">
         <div class="logo-group">
             <div class="logo-mark">RED</div>
-            <div class="logo-t"><b>Report Generator</b><small>No API Key Required</small></div>
+            <div class="logo-t"><b>Report Generator</b><small>Built-in OCR &bull; No API Key</small></div>
         </div>
         <div class="dots" id="step-dots">
             <div class="dot now" data-s="1" onclick="navStep(1)">1<span class="dl">Setup</span></div>
@@ -266,7 +302,7 @@
                 <p class="card-desc">Enter the company info. That's it — no API key, no signup, nothing else needed.</p>
                 <div class="info-box">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                    <span>This app generates all assessments, scores, and report text <strong>automatically from the numbers you enter</strong>. No AI API, no cost, no limits. Just enter the data and click Generate.</span>
+                    <span><strong>Built-in OCR + Smart Text Engine.</strong> Upload screenshots → the app reads scores automatically using Tesseract.js (runs in your browser, no API key). Then it generates all assessments, tiers, and report text from the numbers. Zero cost, zero limits.</span>
                 </div>
                 <div class="grid">
                     <div class="fld"><label>Company Name</label><input type="text" id="cfg-co" placeholder="e.g. Roots Real Estate"></div>
@@ -281,20 +317,37 @@
         <!-- STEP 2 -->
         <section id="s2" class="fade" style="display:none">
             <div class="card">
-                <h2 class="card-title">Upload Reference Screenshots</h2>
-                <p class="card-desc">Upload your evaluation spreadsheet screenshots. They'll appear as a reference panel while you enter scores — no AI extraction needed.</p>
+                <h2 class="card-title">Upload Evaluation Screenshots</h2>
+                <p class="card-desc">Upload your spreadsheet screenshots. The built-in OCR engine will read the text and extract all trainee scores automatically — no API key needed.</p>
                 <div class="upzone" id="upzone">
                     <input type="file" multiple accept="image/*" id="file-in" onchange="pickFiles(event)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     <h3>Drop screenshots here or click to browse</h3>
-                    <p>PNG, JPG, WebP — they'll show as a reference strip while you work</p>
+                    <p>PNG, JPG, WebP — the OCR will read text directly from these images</p>
                 </div>
                 <div class="gallery" id="gallery"></div>
+
+                <!-- Extract section: appears after images uploaded -->
+                <div id="extract-section" style="display:none">
+                    <div class="extract-zone">
+                        <h4>📸 <span id="img-count">0</span> screenshot(s) ready for extraction</h4>
+                        <button class="btn btn-ok" onclick="extractFromScreenshots()" style="margin-top:12px;padding:14px 36px;font-size:.95rem">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                            Extract Data from Screenshots
+                        </button>
+                        <p>Tesseract.js OCR runs entirely in your browser — no data leaves your device</p>
+                    </div>
+                    <div id="raw-area" style="display:none">
+                        <span class="raw-toggle" onclick="document.getElementById('raw-box').classList.toggle('on')">▶ Show raw OCR text (debug)</span>
+                        <div class="raw-box" id="raw-box"></div>
+                    </div>
+                </div>
+
                 <div class="acts b" style="margin-top:28px">
                     <button class="btn btn-g" onclick="go(1)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>Back</button>
                     <div style="display:flex;gap:10px">
-                        <button class="btn btn-s" onclick="skipScreenshots()">Skip — No Screenshots</button>
-                        <button class="btn btn-p" onclick="doneStep2()">Continue with Screenshots<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+                        <button class="btn btn-s" onclick="skipScreenshots()">Skip — Enter Manually</button>
+                        <button class="btn btn-s" onclick="doneStep2()">Use as Reference Only<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
                     </div>
                 </div>
             </div>
@@ -416,6 +469,9 @@ function addFiles(fl){
 }
 function renderGallery(){
     document.getElementById('gallery').innerHTML=S.imgs.map(i=>`<div class="thumb"><img src="${i.url}"><button class="xbtn" onclick="event.stopPropagation();rmImg('${i.id}')">✕</button></div>`).join('');
+    // Show/hide extract section
+    const es=document.getElementById('extract-section');
+    if(es){es.style.display=S.imgs.length?'block':'none';const ic=document.getElementById('img-count');if(ic)ic.textContent=S.imgs.length;}
 }
 function rmImg(id){S.imgs=S.imgs.filter(i=>i.id!==id);renderGallery()}
 function skipScreenshots(){if(!S.trainees.length)addTrainee();renderRefPanel();renderCards();go(3)}
@@ -433,6 +489,382 @@ function renderRefPanel(){
     a.innerHTML=`<div class="ref-panel"><h4>📸 Reference Screenshots — click to zoom</h4><div class="ref-scroll">${S.imgs.map(i=>`<img src="${i.url}" onclick="openLB('${i.url}')">`).join('')}</div></div>`;
 }
 function openLB(url){document.getElementById('lb-img').src=url;document.getElementById('lightbox').classList.add('on')}
+
+// ============================================================
+//  BUILT-IN OCR ENGINE (Tesseract.js — 100% Browser, No API)
+// ============================================================
+
+function ocrStep(n,state){
+    for(let i=1;i<=4;i++){
+        const el=document.getElementById('os-'+i);
+        if(i<n){el.className='ocr-step done';el.querySelector('.sico').textContent='✅'}
+        else if(i===n){el.className='ocr-step active';el.querySelector('.sico').textContent=state==='done'?'✅':'⏳'}
+        else{el.className='ocr-step';el.querySelector('.sico').textContent='⏳'}
+    }
+}
+function ocrProg(msg,pct){
+    document.getElementById('ocr-msg').textContent=msg;
+    document.getElementById('ocr-bar').style.width=pct+'%';
+    document.getElementById('ocr-pct').textContent=Math.round(pct)+'%';
+}
+
+// Image preprocessing — enhances contrast for OCR accuracy
+function ocrPreprocess(dataUrl){
+    return new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>{
+            const c=document.createElement('canvas');
+            // Scale up for better OCR (aim for ~300 DPI equivalent)
+            const scale=Math.max(2,Math.min(4,2400/Math.max(img.width,img.height)));
+            c.width=img.width*scale;c.height=img.height*scale;
+            const ctx=c.getContext('2d');
+            // Sharpen rendering
+            ctx.imageSmoothingEnabled=false;
+            ctx.drawImage(img,0,0,c.width,c.height);
+            // Grayscale + aggressive contrast for crisp text
+            const id=ctx.getImageData(0,0,c.width,c.height),d=id.data;
+            for(let i=0;i<d.length;i+=4){
+                let g=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2];
+                // Push darks darker, lights lighter (binarize-ish)
+                g=g<145?Math.max(0,g*0.4):Math.min(255,128+(g-128)*2.2);
+                d[i]=d[i+1]=d[i+2]=g;
+            }
+            ctx.putImageData(id,0,0);
+            resolve(c.toDataURL('image/png'));
+        };
+        img.src=dataUrl;
+    });
+}
+
+// Main extraction function
+async function extractFromScreenshots(){
+    if(!S.imgs.length){toast('Upload screenshots first','err');return}
+    if(!window.Tesseract){toast('OCR engine not loaded — check internet connection','err');return}
+
+    const ov=document.getElementById('ocr-overlay');
+    ov.classList.add('on');
+    ocrProg('Loading OCR engine...',2);ocrStep(1);
+
+    try{
+        // Create Tesseract worker
+        const worker=await Tesseract.createWorker('eng',1,{
+            logger:m=>{
+                if(m.status==='loading tesseract core')ocrProg('Loading Tesseract core...',5);
+                else if(m.status==='initializing tesseract')ocrProg('Initializing engine...',10);
+                else if(m.status==='loading language traineddata')ocrProg('Loading English language data...',15);
+                else if(m.status==='initializing api')ocrProg('Preparing OCR API...',22);
+                else if(m.status==='recognizing text'){
+                    const imgPct=25+Math.round(m.progress*50);
+                    ocrProg('Reading text... '+Math.round(m.progress*100)+'%',imgPct);
+                }
+            }
+        });
+        ocrStep(1,'done');ocrStep(2);
+
+        let allTexts=[];
+
+        for(let i=0;i<S.imgs.length;i++){
+            const base=25+(i/S.imgs.length)*60;
+            ocrProg(`Preprocessing image ${i+1}/${S.imgs.length}...`,base);
+            ocrStep(2);
+
+            const processed=await ocrPreprocess(S.imgs[i].url);
+
+            ocrProg(`OCR reading image ${i+1}/${S.imgs.length}...`,base+15);
+            ocrStep(3);
+
+            const{data:{text}}=await worker.recognize(processed);
+            allTexts.push(text);
+            console.log(`[OCR] Image ${i+1} raw text:`,text);
+        }
+
+        await worker.terminate();
+
+        ocrProg('Parsing extracted data...',90);ocrStep(4);
+
+        const combined=allTexts.join('\n---IMAGE-BREAK---\n');
+        // Show raw text for debugging
+        const rawEl=document.getElementById('raw-box');
+        if(rawEl){rawEl.textContent=combined;document.getElementById('raw-area').style.display='block'}
+
+        const trainees=parseOCRText(combined);
+
+        if(trainees.length===0){
+            ocrProg('No trainee data found',100);ocrStep(4,'done');
+            setTimeout(()=>{
+                ov.classList.remove('on');
+                toast('Could not find trainee data in screenshots. Try clearer images, or enter data manually.','err');
+            },800);
+            return;
+        }
+
+        // Populate state
+        S.trainees=trainees;
+        S.trainees.forEach((_,i)=>recalc(i));
+        S.trainees.forEach((t,i)=>{
+            if(t.name){t.overallAssessment=genAssessment(t);t.comments=genComments(t)}
+        });
+
+        ocrProg('Done! '+trainees.length+' trainee(s) extracted',100);ocrStep(4,'done');
+
+        setTimeout(()=>{
+            ov.classList.remove('on');
+            renderRefPanel();renderCards();go(3);
+            toast(`Extracted ${trainees.length} trainee(s) from screenshots!`,'ok');
+        },700);
+
+    }catch(e){
+        console.error('[OCR] Error:',e);
+        ov.classList.remove('on');
+        toast('OCR failed: '+e.message+'. Try entering data manually.','err');
+    }
+}
+
+// ============================================================
+//  SMART OCR TEXT PARSER
+// ============================================================
+
+function parseOCRText(raw){
+    // Clean up common OCR artifacts
+    let text=raw
+        .replace(/[|¦│┃┆┊]/g,' ')  // table borders
+        .replace(/[—–]/g,'-')       // dashes
+        .replace(/\t+/g,'  ')       // tabs to spaces
+        .replace(/[''`]/g,"'")      // smart quotes
+        .replace(/[""]/g,'"');
+
+    const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>1);
+
+    // Header keyword patterns
+    const hdPatterns={
+        name:/\b(name|trainee|student|employee|candidate)\b/i,
+        pk:/\b(product|knowledge|pk|prod\.?\s*know)\b/i,
+        map:/\b(mapp?ing|map)\b/i,
+        ss:/\b(soft\s*skill|ss|communication)\b/i,
+        pr:/\b(present|appearance|professionalism|professional)\b/i,
+        late:/\b(late|tardy?|punctual)/i,
+        absent:/\b(absent|absence|attend)/i,
+        missed:/\b(miss|content)/i
+    };
+
+    // Score header for the entire header row
+    let bestHeaderIdx=-1,bestHeaderScore=0;
+    for(let i=0;i<Math.min(lines.length,15);i++){
+        let score=0;
+        for(const [k,rx] of Object.entries(hdPatterns)){
+            if(rx.test(lines[i]))score++;
+        }
+        if(score>bestHeaderScore){bestHeaderScore=score;bestHeaderIdx=i}
+    }
+
+    console.log('[Parser] Best header line:',bestHeaderIdx,'score:',bestHeaderScore,bestHeaderIdx>=0?lines[bestHeaderIdx]:'none');
+
+    // Determine column order from header if found
+    let colOrder=null;
+    if(bestHeaderScore>=2 && bestHeaderIdx>=0){
+        colOrder=detectColumnOrder(lines[bestHeaderIdx]);
+        console.log('[Parser] Detected column order:',colOrder);
+    }
+
+    // Parse data lines
+    const trainees=[];
+    const startLine=bestHeaderIdx>=0?bestHeaderIdx+1:0;
+
+    for(let i=startLine;i<lines.length;i++){
+        const line=lines[i];
+        // Skip separator lines, empty-ish lines, image breaks
+        if(/^[\-_=\s|+]+$/.test(line))continue;
+        if(/IMAGE-BREAK/.test(line))continue;
+        // Skip lines that look like headers or totals
+        if(/\b(total|average|mean|score|assessment|result|overall|batch|company)\b/i.test(line)&&!/\b[A-Z][a-z]{2,}/g.test(line))continue;
+
+        const t=parseDataRow(line,colOrder);
+        if(t)trainees.push(t);
+    }
+
+    // Deduplicate by name
+    const seen=new Map();
+    for(const t of trainees){
+        const key=t.name.toLowerCase().replace(/\s+/g,' ');
+        if(!seen.has(key)||seen.get(key).overallScore<t.overallScore)seen.set(key,t);
+    }
+
+    return Array.from(seen.values());
+}
+
+function detectColumnOrder(headerLine){
+    // Find position of each keyword in the header to determine order
+    const fields=[
+        {key:'pk',patterns:[/product/i,/knowledge/i,/pk/i]},
+        {key:'map',patterns:[/mapp?ing/i]},
+        {key:'ss',patterns:[/soft/i,/skill/i,/ss\b/i,/communicat/i]},
+        {key:'pr',patterns:[/present/i,/appearance/i,/professional/i]},
+        {key:'late',patterns:[/late/i,/tardy/i,/punctual/i]},
+        {key:'absent',patterns:[/absent/i,/absence/i]},
+        {key:'missed',patterns:[/miss/i]}
+    ];
+
+    const positions=[];
+    for(const f of fields){
+        let bestPos=Infinity;
+        for(const p of f.patterns){
+            const m=headerLine.match(p);
+            if(m&&m.index<bestPos)bestPos=m.index;
+        }
+        if(bestPos<Infinity)positions.push({key:f.key,pos:bestPos});
+    }
+
+    positions.sort((a,b)=>a.pos-b.pos);
+    return positions.map(p=>p.key);
+}
+
+function parseDataRow(line,colOrder){
+    // A data row: text (name) followed by numbers
+    // Could have a leading row number like "1" or "1."
+
+    // Find where numbers start
+    // Strategy: find first digit that's preceded by a space and looks like a score
+    const numStartMatch=line.match(/\s(\d+\.?\d*)\s/);
+    if(!numStartMatch)return null;
+
+    let splitIdx=numStartMatch.index;
+    let namePart=line.substring(0,splitIdx).trim();
+    let numPart=line.substring(splitIdx).trim();
+
+    // Clean up name: remove leading row numbers like "1.", "1)", "01"
+    namePart=namePart.replace(/^\d{1,3}[\.\)\-\s]+/,'').trim();
+    // Remove trailing special chars
+    namePart=namePart.replace(/[^a-zA-Z\u0600-\u06FF\s]+$/,'').trim();
+
+    if(!namePart||namePart.length<2)return null;
+
+    // Skip if name looks like a header
+    if(/^(name|trainee|student|total|average|score|product|mapping|soft|present|performance|area|metric)\b/i.test(namePart))return null;
+    // Skip if name is all numbers or single char
+    if(/^\d+$/.test(namePart)||namePart.length<2)return null;
+
+    // Extract numbers from numPart, fixing OCR errors in the number zone only
+    let cleanNums=numPart
+        .replace(/\bO\b/g,'0')     // isolated O -> 0
+        .replace(/\bo\b/g,'0')     // isolated o -> 0
+        .replace(/\bl\b/g,'1')     // isolated l -> 1
+        .replace(/\bI\b(?=[\s\d])/g,'1')  // I before space/digit -> 1
+        .replace(/,(\d)/g,'.$1')   // comma as decimal -> dot
+        .replace(/N\s*[\/\\]\s*A/gi,'NAN'); // Mark N/A as NAN for later
+
+    const nums=[];
+    const re=/\d+\.?\d*/g;
+    let m;
+    while((m=re.exec(cleanNums))!==null)nums.push(parseFloat(m[0]));
+
+    if(nums.length<2)return null;
+
+    // Check for N/A in original line
+    const hasNA=/n\s*[\/\\]?\s*a/i.test(numPart);
+
+    // Map numbers to fields
+    let pk=0,mp=0,ss=0,pr=0,late='N/A',absent=0,missed='N/A';
+
+    if(colOrder&&colOrder.length>=2){
+        // Use detected column order
+        const scoreNums=extractScoreSequence(nums);
+        const mapping={pk:0,map:1,ss:2,pr:3};
+        const scoreFields=colOrder.filter(k=>['pk','map','ss','pr'].includes(k));
+        for(let i=0;i<scoreFields.length&&i<scoreNums.length;i++){
+            const f=scoreFields[i];
+            if(f==='pk')pk=scoreNums[i];
+            else if(f==='map')mp=scoreNums[i];
+            else if(f==='ss')ss=scoreNums[i];
+            else if(f==='pr')pr=scoreNums[i];
+        }
+        // Attendance from remaining
+        const attFields=colOrder.filter(k=>['late','absent','missed'].includes(k));
+        const attStart=scoreFields.length;
+        const attNums=nums.slice(attStart);
+        for(let i=0;i<attFields.length;i++){
+            const val=attNums[i];
+            if(attFields[i]==='absent'&&val!=null)absent=Math.round(val);
+            else if(attFields[i]==='late'&&val!=null)late=val;
+        }
+    }else{
+        // No header detected — use heuristic
+        const result=heuristicMap(nums);
+        pk=result.pk;mp=result.mp;ss=result.ss;pr=result.pr;
+        absent=result.absent;late=result.late;
+    }
+
+    if(hasNA){late='N/A';missed='N/A'}
+
+    // Validate scores
+    pk=clampScore(pk);mp=clampScore(mp);ss=clampScore(ss);pr=clampScore(pr);
+    if(pk===0&&mp===0&&ss===0&&pr===0)return null; // all zeros = probably not a real row
+
+    return{
+        name:namePart,company:S.co,batch:'Batch '+S.batch,overallScore:0,
+        assessmentResult:'Passed',badgeClass:'b-gray',overallAssessment:'',
+        scores:{
+            presentability:{score:pr,max:5},softSkills:{score:ss,max:5},
+            mapping:{score:mp,max:5},productKnowledge:{score:pk,max:5},
+            techScorePercent:0,softScorePercent:0,totalCore:0,
+            professionalConductRating:{score:0,max:10}
+        },
+        attendance:{late:late,absent:absent,missedContent:missed},
+        comments:''
+    };
+}
+
+function extractScoreSequence(nums){
+    // Find the first run of numbers that are in 0-5 range (individual scores)
+    // Skip a leading row number if present
+    let start=0;
+    // If first number looks like a row number (integer 1-50, followed by numbers in 0-5)
+    if(nums.length>4&&nums[0]===Math.floor(nums[0])&&nums[0]>=1&&nums[0]<=50){
+        if(nums[1]>=0&&nums[1]<=5)start=1;
+    }
+    const result=[];
+    for(let i=start;i<nums.length;i++){
+        if(nums[i]>=0&&nums[i]<=5){
+            result.push(nums[i]);
+            if(result.length>=4)break;
+        }else if(result.length>0){
+            // Hit a non-score number (like a total or percentage)
+            break;
+        }
+    }
+    return result;
+}
+
+function heuristicMap(nums){
+    // Without header, assume: [maybe-row#] PK, Map, SS, PR, [totals...], [late, absent]
+    const scores=extractScoreSequence(nums);
+    while(scores.length<4)scores.push(0);
+
+    // Look for attendance at the end of all numbers
+    let absent=0,late='N/A';
+    // After the 4 scores, skip any large numbers (totals/percentages)
+    // Then small numbers at the end are attendance
+    const afterScores=[];
+    let foundBig=false,scoreCount=0;
+    let start=0;
+    if(nums.length>4&&nums[0]===Math.floor(nums[0])&&nums[0]>=1&&nums[0]<=50)start=1;
+    for(let i=start;i<nums.length;i++){
+        if(scoreCount<4&&nums[i]>=0&&nums[i]<=5){scoreCount++;continue}
+        if(scoreCount>=4)afterScores.push(nums[i]);
+    }
+    // The last 1-3 small integers in afterScores could be attendance
+    const smallEnd=afterScores.filter(n=>n>=0&&n<=30&&n===Math.floor(n));
+    if(smallEnd.length>=2){absent=smallEnd[smallEnd.length-1];late=smallEnd[smallEnd.length-2]}
+    else if(smallEnd.length===1){absent=smallEnd[0]}
+
+    return{pk:scores[0],mp:scores[1],ss:scores[2],pr:scores[3],absent,late};
+}
+
+function clampScore(v){
+    v=parseFloat(v)||0;
+    // Round to nearest 0.5
+    v=Math.round(v*2)/2;
+    return Math.max(0,Math.min(5,v));
+}
 
 // ============================================================
 //  SMART TEXT ENGINE — generates everything from numbers
