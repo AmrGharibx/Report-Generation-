@@ -1,22 +1,23 @@
-# RED Report Generator — AI-Powered Trainee Performance Reports
+# RED Report Generator — No API Key Required
 
-A complete, interactive web application for generating professional A4 trainee performance reports for **RED Real Estate Domain Training Academy**.
+A complete, interactive web application for generating professional A4 trainee performance reports for **RED Real Estate Domain Training Academy**. No API key, no signup, no cost — everything runs 100% in your browser.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Deploy](https://img.shields.io/badge/deploy-GitHub%20Pages-brightgreen)
+![No API](https://img.shields.io/badge/API-Not%20Required-green)
 
 ## Features
 
-- **AI-Powered Data Extraction** — Upload evaluation screenshots and let AI (Google Gemini or OpenAI GPT-4o) extract all trainee scores automatically
-- **Screenshot Upload** — Drag-and-drop or click to upload multiple images at once
-- **Manual Entry** — Add trainee data manually without AI if preferred
-- **Editable Review** — Verify and edit all extracted data before generating the report
-- **Auto-Calculation** — Recalculate derived scores (tech %, soft %, overall %) from base scores
-- **Per-Trainee AI Assessment** — Regenerate professional assessment paragraphs per trainee with one click
+- **Zero API Dependency** — No AI key, no signup, no external calls. All text is generated from a built-in Smart Template Engine
+- **Smart Text Engine** — Automatically generates assessment paragraphs, trainer comments, and concluding remarks from scores
+- **Screenshot Reference** — Upload evaluation screenshots as a visual reference panel while you enter scores
+- **Drag & Drop Upload** — Add multiple images at once with drag-and-drop or file picker
+- **Auto-Calculation** — Tech Score %, Soft Score %, Overall %, and assessment tier computed automatically
+- **Editable Cards** — Expand trainee cards to edit any field. Regenerate text with one click
 - **Pixel-Perfect A4 Reports** — Cover page, individual trainee pages, and concluding remarks — all formatted to A4
-- **PDF Download** — Direct in-browser PDF generation (html2canvas + jsPDF)
+- **PDF Download** — In-browser PDF generation (html2canvas + jsPDF)
 - **Print Support** — Perfect print-to-PDF via browser print dialog
-- **Persistent Settings** — API key and company info saved in localStorage
+- **Persistent Settings** — Company name and batch saved in localStorage
 
 ## Quick Start
 
@@ -31,23 +32,31 @@ Just open `index.html` in Chrome or Edge. No server needed.
 ## How to Use
 
 ### Step 1 — Setup
-Enter your company name, batch number, and AI API key.
-- **Google Gemini** (recommended, free): Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-- **OpenAI GPT-4o** (paid): Get a key at [platform.openai.com](https://platform.openai.com/api-keys)
+Enter your company name and batch number. That's it — no API key needed.
 
-### Step 2 — Upload Screenshots
-Upload evaluation spreadsheet screenshots. The AI will analyze them and extract all trainee data.
-- Or click **Manual Entry** to skip AI and enter data by hand.
+### Step 2 — Upload Screenshots (Optional)
+Upload your evaluation spreadsheet screenshots. They'll be displayed as a visual reference strip while you enter data. You can skip this step if you prefer.
 
-### Step 3 — Review & Edit
-Verify extracted data. Click any trainee card to expand and edit fields.
-- **Recalculate Scores** — auto-computes all derived percentages from base scores
-- **Regenerate with AI** — rewrites the assessment paragraph for a specific trainee
+### Step 3 — Enter Trainee Data
+Enter scores from your screenshots into the trainee cards. Everything else is auto-generated:
+- **Recalculate All** — recomputes all derived scores and regenerates all text
+- **Auto-Generate** — regenerates assessment or comments for a specific trainee
+- All text fields are fully editable if you want to customize
 
 ### Step 4 — Report Preview
 View the full A4 report. Then:
 - **Download PDF** — saves directly as a PDF file
 - **Print** — opens browser print dialog (use "Save as PDF" for best quality)
+
+## Smart Text Engine
+
+The built-in text engine generates professional report text from numerical scores:
+
+- **Overall Assessment** — Multi-sentence paragraph covering strengths, weaknesses, tech score analysis, professionalism, and attendance
+- **Trainer's Comments** — Concise summary highlighting key areas
+- **Concluding Remarks** — Automatic outro page grouping trainees by tier with appropriate language
+
+All generated text is fully editable — change anything you want before generating the report.
 
 ## Assessment Tiers
 
@@ -65,7 +74,7 @@ View the full A4 report. Then:
 - **Google Fonts** — Sora + Playfair Display
 - **html2canvas** — DOM-to-canvas rendering for PDF
 - **jsPDF** — Client-side PDF generation
-- **Gemini / OpenAI API** — Vision-capable AI for screenshot analysis
+- **Built-in Smart Template Engine** — No external AI service needed
 
 ## Score Calculation
 
@@ -79,10 +88,10 @@ overallScore = (techScore% + softScore%) / 2
 
 ## Privacy
 
-- API keys are stored **only in your browser's localStorage**
-- Screenshots are sent **directly to the AI provider you choose** (Google or OpenAI)
-- No data is collected, stored, or sent to any third-party server
-- The app runs 100% client-side
+- **No API keys required or stored**
+- **No data sent to any external server**
+- Screenshots stay in your browser — never uploaded anywhere
+- The app runs 100% client-side with zero network calls
 
 ## License
 
